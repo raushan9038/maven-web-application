@@ -1,0 +1,23 @@
+node{
+    def mavenHome_3_8_6 = tool name: "maven3.8.6"
+    echo "Jenkins url is: ${env.JENKINS_URL}"
+    echo "Node name is: ${env.NODE_NAME}"
+    properties([buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '5', daysToKeepStr: '', numToKeepStr: '5')), pipelineTriggers([pollSCM('* * * * *')])])
+    stage('CheckOutCode'){
+        git branch: 'development', credentialsId: '743326a1-aa06-44e3-9410-e28a8342912b', url: 'https://github.com/raushan9038/maven-web-application.git'
+    }
+    stage('Build'){
+        sh "${mavenHome_3_8_6}/bin/mvn clean package"
+    }
+    stage('ExcecuteSonarQubeReport'){
+        sh "${mavenHome_3_8_6}/bin/mvn clean sonar:sonar"
+    }   
+    stage('UploadArtifactintoArtifactRepo'){
+        sh "${mavenHome_3_8_6}/bin/mvn clean deploy"
+    }
+    stage('DeployAppIntoTomcatServer'){
+        sshagent(['ca0145a8-20d7-4795-8bc3-befa6b14ceb0']) {
+            sh "scp -o StrictHostKeyChecking=no target/maven-web-application.war ec2-user@172.31.11.245:/opt/apache-tomcat-9.0.65/webapps/"
+        }
+    }
+}
